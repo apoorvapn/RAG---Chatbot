@@ -1,0 +1,28 @@
+Retrieval-Augmented Generation (RAG) Notes
+
+RAG is a technique that combines a retrieval system with a generative language model.
+Instead of relying only on what the LLM learned during training, RAG first retrieves
+relevant chunks of text from an external knowledge base, then feeds those chunks to the
+LLM as context so it can generate a grounded, up-to-date answer.
+
+A typical RAG pipeline has two stages:
+1. Ingestion (offline): documents are loaded, split into smaller chunks, converted into
+   vector embeddings, and stored in a vector database (e.g. FAISS, Chroma, Pinecone).
+2. Query (online): the user's question is embedded with the same embedding model, the
+   vector database is searched for the most similar chunks (semantic search), and those
+   chunks are inserted into a prompt that is sent to the LLM along with the question.
+
+Why chunking matters: LLMs have a limited context window, and embedding an entire large
+document as a single vector loses fine-grained detail. Splitting documents into smaller,
+overlapping chunks (e.g. 500-1000 characters with 100-200 character overlap) preserves
+local context while keeping each chunk focused enough to retrieve accurately.
+
+Vector databases store embeddings so that semantic similarity search (usually cosine
+similarity or dot product) can be done efficiently, even across millions of vectors.
+FAISS (Facebook AI Similarity Search) is a popular local, in-memory/on-disk vector index
+library. Chroma and Pinecone are other common choices, with Chroma being lightweight and
+easy to run locally, and Pinecone being a managed cloud vector database.
+
+Common failure modes in RAG systems include: retrieving irrelevant chunks (bad embeddings
+or chunking), hallucination when the LLM ignores retrieved context, and stale indexes when
+the underlying documents change but the vector store isn't re-ingested.

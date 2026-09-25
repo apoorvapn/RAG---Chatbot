@@ -1,0 +1,19 @@
+# Environment / secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Vector index (regenerated locally via `python ingest.py`)
+faiss_index/
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+.idea/

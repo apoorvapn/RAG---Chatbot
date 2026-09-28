@@ -16,19 +16,14 @@ Run:
     python chat.py
 """
 
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-load_dotenv()  # reads OPENAI_API_KEY from a local .env file, if present
 
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-INDEX_DIR = Path(__file__).parent / "faiss_index"
+from providers import INDEX_DIR, PROVIDER, check_config, get_embeddings, get_llm
+
 TOP_K = 4  # how many chunks to retrieve per question
 
 PROMPT_TEMPLATE = """You are a helpful assistant answering questions using ONLY the
@@ -49,21 +44,17 @@ def format_docs(docs):
 
 
 def main():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise SystemExit(
-            "ERROR: Set the OPENAI_API_KEY environment variable first.\n"
-            "  export OPENAI_API_KEY=sk-..."
-        )
+    check_config()
     if not INDEX_DIR.exists():
         raise SystemExit("No FAISS index found. Run `python ingest.py` first.")
 
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = get_embeddings()
     vectorstore = FAISS.load_local(
         str(INDEX_DIR), embeddings, allow_dangerous_deserialization=True
     )
     retriever = vectorstore.as_retriever(search_kwargs={"k": TOP_K})
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = get_llm()
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
 
     rag_chain = (
@@ -73,7 +64,7 @@ def main():
         | StrOutputParser()
     )
 
-    print("RAG chatbot ready. Type a question, or 'exit' to quit.\n")
+    print(f"RAG chatbot ready (provider: {PROVIDER}). Type a question, or 'exit' to quit.\n")
     while True:
         question = input("You: ").strip()
         if question.lower() in {"exit", "quit"}:

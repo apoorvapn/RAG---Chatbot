@@ -2,7 +2,7 @@
 
 A Retrieval-Augmented Generation (RAG) chatbot that answers questions using
 your own PDFs/notes as its knowledge base, built with **LangChain**, a
-**FAISS** vector store, and an **OpenAI** LLM.
+**FAISS** vector store, and open-source models via **Ollama** (or OpenAI, optionally).
 
 ## How it works
 
@@ -26,7 +26,7 @@ your own PDFs/notes as its knowledge base, built with **LangChain**, a
         └────────────────────┘                          │ 6. send to LLM
                                                            ▼
                                               ┌───────────────────┐
-                                              │  gpt-4o-mini        │
+                                              │  LLM (llama3.2)     │
                                               │  generates grounded │
                                               │  answer + sources   │
                                               └───────────────────┘
@@ -37,7 +37,7 @@ your own PDFs/notes as its knowledge base, built with **LangChain**, a
 2. Splits each document into overlapping chunks (800 chars, 150 overlap) —
    this keeps chunks small enough to retrieve precisely, while the overlap
    stops important sentences from being cut in half at a chunk boundary
-3. Embeds each chunk with OpenAI's `text-embedding-3-small`
+3. Embeds each chunk with `nomic-embed-text` (or OpenAI's `text-embedding-3-small`)
 4. Stores all vectors in a local FAISS index (`faiss_index/`)
 
 **`chat.py`** (run every time you want to ask questions):
@@ -45,28 +45,41 @@ your own PDFs/notes as its knowledge base, built with **LangChain**, a
 2. Runs a similarity search against FAISS to pull the top 4 most relevant
    chunks
 3. Inserts those chunks into a prompt template as "context"
-4. Sends the prompt to `gpt-4o-mini`, which is instructed to answer only
+4. Sends the prompt to the LLM (`llama3.2` by default), which is instructed to answer only
    from the given context (reduces hallucination)
 5. Prints the answer **and** which source chunks it was grounded in
 
-## Setup
+## Setup (100% free, runs locally with Ollama)
+
+1. Install [Ollama](https://ollama.com/download) and make sure it is running.
+2. Download the two open-source models (one-time, about 2.5 GB total):
+
+```bash
+ollama pull llama3.2           # the chat model (Meta's Llama 3.2, 3B)
+ollama pull nomic-embed-text   # the embedding model
+```
+
+3. Set up the project:
 
 ```bash
 git clone <your-repo-url>
 cd rag-chatbot
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-
-cp .env.example .env      # then edit .env and paste your key
-# OPENAI_API_KEY=sk-...   (get one at platform.openai.com)
+cp .env.example .env           # defaults to PROVIDER=ollama, no key needed
 ```
 
-Drop your own PDFs/notes into `data/` (a sample file is already included
-so you can try it immediately), then:
+4. Drop your own PDFs/notes into `data/` (a sample file is included), then:
 
 ```bash
 python ingest.py    # builds the vector index
-python chat.py       # ask questions in a loop
+python chat.py      # ask questions in a loop
 ```
+
+### Optional: use OpenAI instead
+Edit `.env`, set `PROVIDER=openai` and add your `OPENAI_API_KEY`, then re-run
+`python ingest.py` (each provider keeps its own index, since embedding models
+are not interchangeable).
 
 ## Things worth knowing for follow-up questions
 
@@ -97,8 +110,9 @@ python chat.py       # ask questions in a loop
 rag-chatbot/
 ├── data/                # put your source PDFs/txt files here
 │   └── sample_notes.txt # example file so it runs out of the box
+├── providers.py         # picks Ollama (free) or OpenAI models
 ├── ingest.py            # builds the FAISS index
-├── chat.py               # query loop (retrieval + generation)
+├── chat.py              # query loop (retrieval + generation)
 ├── requirements.txt
 └── README.md
 ```

@@ -8,25 +8,20 @@ What this does:
 2. Splits each document into overlapping chunks (so retrieval stays precise
    even for long documents, since LLM context windows are limited)
 3. Converts each chunk into a vector embedding
-4. Stores the vectors in a local FAISS index on disk (./faiss_index)
+4. Stores the vectors in a local FAISS index on disk (./faiss_index_<provider>)
 
 Run this once whenever you add/change files in ./data:
     python ingest.py
 """
 
-import os
 from pathlib import Path
-
-from dotenv import load_dotenv
-load_dotenv()  # reads OPENAI_API_KEY from a local .env file, if present
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+from providers import INDEX_DIR, PROVIDER, check_config, get_embeddings
 
 DATA_DIR = Path(__file__).parent / "data"
-INDEX_DIR = Path(__file__).parent / "faiss_index"
 
 CHUNK_SIZE = 800       # characters per chunk
 CHUNK_OVERLAP = 150    # overlap between consecutive chunks, to preserve context across boundaries
@@ -61,19 +56,15 @@ def chunk_documents(docs):
 
 def build_index(chunks):
     """Embed the chunks and persist a FAISS vector index to disk."""
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = get_embeddings()
     vectorstore = FAISS.from_documents(chunks, embeddings)
     vectorstore.save_local(str(INDEX_DIR))
     return vectorstore
 
 
 def main():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise SystemExit(
-            "ERROR: Set the OPENAI_API_KEY environment variable first.\n"
-            "  export OPENAI_API_KEY=sk-...   (Mac/Linux)\n"
-            "  setx OPENAI_API_KEY sk-...     (Windows)"
-        )
+    check_config()
+    print(f"Using provider: {PROVIDER}")
 
     print(f"Loading documents from {DATA_DIR} ...")
     docs = load_documents()

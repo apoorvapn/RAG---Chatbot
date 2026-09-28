@@ -11,7 +11,7 @@ venv/
 env/
 
 # Vector index (regenerated locally via `python ingest.py`)
-faiss_index/
+faiss_index*/
 
 # OS / editor cruft
 .DS_Store
